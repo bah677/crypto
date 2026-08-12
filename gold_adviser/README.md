@@ -2,7 +2,9 @@
 
 Самостоятельный Telegram-бот: сканер аномальных минутных свечей **XAU/USD**.
 
-Репозиторий: [github.com/bah677/gold_adviser](https://github.com/bah677/gold_adviser)
+Репозиторий (папка в monorepo): [github.com/bah677/crypto/tree/master/gold_adviser](https://github.com/bah677/crypto/tree/master/gold_adviser)
+
+Отдельный remote `bah677/gold_adviser` можно подключить после создания пустого репозитория на GitHub (ветка `gold_adviser-split` уже подготовлена локально).
 
 > Использует того же Telegram-бота, что и `crypto_adviser`. Одновременно оба polling-процесса запускать нельзя — остановите старый, затем стартуйте `gold_adviser`.
 
