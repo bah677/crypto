@@ -1,0 +1,62 @@
+# Secrets & local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Runtime / local data
+logs/
+data/
+*.log
+*.sqlite
+*.db
+exports/
+chroma_data/
+
+# IDE / editor
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Installer blobs (large / not needed in repo)
+scripts/mt5linux-installer.sh
+
+# Local debug dumps
+logs/
+**/debug_out/
+*.jsonl
+!tests/**/*.json

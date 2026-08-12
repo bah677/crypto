@@ -1,0 +1,15 @@
+# Workspace-level ignores (подпроекты имеют свои .gitignore)
+
+.DS_Store
+Thumbs.db
+.cursor/
+.vscode/
+.idea/
+
+# Не коммитить окружения и логи из подпапок
+**/venv/
+**/.venv/
+**/__pycache__/
+**/logs/
+**/.env
+!**/.env.example
