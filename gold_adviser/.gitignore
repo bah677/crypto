@@ -1,0 +1,24 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python / venv
+__pycache__/
+*.py[cod]
+.Python
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Runtime
+logs/
+data/
+*.log
+
+# IDE
+.cursor/
+.vscode/
+.idea/
+.DS_Store

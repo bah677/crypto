@@ -7,12 +7,14 @@
 ```text
 crypto/
 ├── README.md
-└── crypto_adviser/     # Telegram-бот: pump scanner, Funding+OI, entry-watch, EMA/SL
+├── crypto_adviser/     # pump / Funding+OI / entry-watch
+└── gold_adviser/       # XAU/USD M1 anomaly (отдельный repo)
 ```
 
 | Папка | Описание |
 |---|---|
-| [`crypto_adviser/`](crypto_adviser/) | Текущая сборка советника/сканера (бывший `ema_podpiska`) |
+| [`crypto_adviser/`](crypto_adviser/) | Crypto pump / Funding+OI / entry-watch |
+| [`gold_adviser/`](gold_adviser/) | XAU/USD M1 anomaly scanner (отдельный GitHub + supervisor) |
 
 ## Быстрый старт (`crypto_adviser`)
 
