@@ -1,35 +1,20 @@
 # crypto
 
-Рабочее пространство для крипто-проектов.
+Монорепозиторий трёх ботов (три каталога в `master`, не три git-ветки).
 
-## Структура
+| Каталог | Роль |
+|---------|------|
+| [`gold_adviser/`](gold_adviser/) | Советчик по золоту |
+| [`crypto_adviser/`](crypto_adviser/) | EMA/pump для подписчиков (урезанный; выключен) |
+| [`crypto_trader/`](crypto_trader/) | Личный EMA/pump (материнский; в проде) |
 
-```text
-crypto/
-├── README.md
-├── crypto_adviser/     # pump / Funding+OI / entry-watch
-└── gold_adviser/       # XAU/USD M1 anomaly (отдельный repo)
-```
+Подробности: [`PROJECTS.md`](PROJECTS.md).
 
-| Папка | Описание |
-|---|---|
-| [`crypto_adviser/`](crypto_adviser/) | Crypto pump / Funding+OI / entry-watch |
-| [`gold_adviser/`](gold_adviser/) | XAU/USD M1 anomaly scanner (отдельный GitHub + supervisor) |
-
-## Быстрый старт (`crypto_adviser`)
+Деплой (restart + commit/push):
 
 ```bash
-cd crypto_adviser
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
-cp .env.example .env   # если ещё нет .env
-./venv/bin/python main.py
+./gold_adviser/scripts/deploy_prod.sh
+./crypto_trader/scripts/deploy_prod.sh
+# подписчики по умолчанию без restart:
+./crypto_adviser/scripts/deploy_prod.sh
 ```
-
-Подробности — в [`crypto_adviser/README.md`](crypto_adviser/README.md).
-
-## GitHub
-
-Репозиторий: [github.com/bah677/crypto](https://github.com/bah677/crypto)
-
-Код бота лежит в подпапке `crypto_adviser/` (monorepo-layout).
