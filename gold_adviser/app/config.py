@@ -51,8 +51,17 @@ class Settings(BaseSettings):
         validation_alias="TWELVEDATA_BASE_URL",
     )
 
+    # Bybit linear perpetual (публичный market kline, ключ не нужен)
+    bybit_symbol: str = Field(default="XAUUSDT", validation_alias="BYBIT_SYMBOL")
+    bybit_category: str = Field(default="linear", validation_alias="BYBIT_CATEGORY")
+
     symbol: str = Field(default="XAUUSD", validation_alias="GOLD_SYMBOL")
     scan_second: int = Field(default=3, validation_alias="GOLD_SCAN_SECOND")
+    # Bybit отдаёт бар сразу; 2–5с достаточно. Для TD было бы ~55.
+    scan_after_close_sec: float = Field(
+        default=3.0, validation_alias="GOLD_SCAN_AFTER_CLOSE_SEC"
+    )
+    scan_poll_sec: float = Field(default=5.0, validation_alias="GOLD_SCAN_POLL_SEC")
 
     # Defaults also seeded into DB (runtime values live in gold_settings)
     default_enabled: bool = Field(default=True, validation_alias="GOLD_DEFAULT_ENABLED")
@@ -69,6 +78,20 @@ class Settings(BaseSettings):
         if v is None or v == "":
             return 3
         return max(0, min(int(v), 50))
+
+    @field_validator("scan_after_close_sec", mode="before")
+    @classmethod
+    def _scan_after_close(cls, v: object) -> float:
+        if v is None or v == "":
+            return 3.0
+        return max(1.0, min(float(v), 120.0))
+
+    @field_validator("scan_poll_sec", mode="before")
+    @classmethod
+    def _scan_poll(cls, v: object) -> float:
+        if v is None or v == "":
+            return 5.0
+        return max(2.0, min(float(v), 60.0))
 
     @computed_field  # type: ignore[prop-decorator]
     @property

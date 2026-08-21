@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, Message
 
 from app.bot.admin_guard import invalidate_admin_cache, is_admin_user
 from app.bot.panel_ui import format_status, panel_keyboard
 from app.config import get_settings
 from app.db.session import session_scope
+from app.market.candles import median_step_seconds
+from app.market.provider import fetch_xau_candles
 from app.repository.admins import add_admin, list_admins, remove_admin
+from app.services.anomaly import analyze_body_anomaly
+from app.services.chart import render_m1_candles_png
 from app.services.scan import run_gold_scan_tick
 from app.services.settings_cache import settings_cache
 
@@ -32,12 +37,22 @@ async def _require_admin(message: Message) -> bool:
 
 @router.message(Command("start", "help"))
 async def cmd_start(message: Message) -> None:
-    cfg = await settings_cache.get()
-    await message.answer(
-        format_status(cfg, generation=settings_cache.generation)
-        + "\n\nКоманды: /gold · /on · /off · /status · /admins",
-        reply_markup=panel_keyboard(cfg),
-    )
+    uid = message.from_user.id if message.from_user else None
+    log.info("cmd_start from uid=%s chat=%s text=%r", uid, message.chat.id, message.text)
+    try:
+        cfg = await settings_cache.get()
+        sent = await message.answer(
+            format_status(cfg, generation=settings_cache.generation)
+            + "\n\nКоманды: /gold · /on · /off · /status · /chart · /admins",
+            reply_markup=panel_keyboard(cfg),
+        )
+        log.info("cmd_start replied message_id=%s", sent.message_id)
+    except Exception:
+        log.exception("cmd_start failed")
+        try:
+            await message.answer("Ошибка панели — смотрите logs/")
+        except Exception:
+            log.exception("cmd_start fallback reply failed")
 
 
 @router.message(Command("status", "gold"))
@@ -219,3 +234,66 @@ async def cb_scan_now(cb: CallbackQuery) -> None:
         log.exception("manual scan failed")
         if cb.message:
             await cb.message.answer("Ошибка скана — смотрите logs/")
+
+
+async def _send_m1_chart(message: Message, *, limit: int | None = None) -> None:
+    cfg = await settings_cache.get()
+    n = max(5, min(int(limit if limit is not None else cfg.lookback), 200))
+    wait = await message.answer(f"Строю график {n}×M1…")
+    try:
+        candles, source = await fetch_xau_candles(limit=n)
+        anomaly = analyze_body_anomaly(candles, body_mult=cfg.body_mult)
+        avg_body = anomaly.avg_body if anomaly else None
+        step = median_step_seconds(candles) or 60.0
+        tf_label = "M1" if abs(step - 60) <= 15 else f"~{int(round(step / 60))}m"
+        png = await asyncio.to_thread(
+            render_m1_candles_png,
+            candles,
+            title=f"XAU · {tf_label} · {source}",
+            highlight_last=True,
+            avg_body=avg_body,
+        )
+        last = candles[-1]
+        first = candles[0]
+        caption = (
+            f"<b>XAU {tf_label}</b> · {len(candles)} св (окно={n}) · "
+            f"<code>{source}</code> · шаг ~{int(round(step))}с\n"
+            f"<code>{first.open_time_key}</code> → <code>{last.open_time_key}</code>\n"
+            f"last O={last.open:.2f} H={last.high:.2f} L={last.low:.2f} C={last.close:.2f}"
+        )
+        if anomaly:
+            # как в скане: среднее тело по всем кроме last; порог = avg × body_mult
+            n_avg = max(len(candles) - 1, 1)
+            threshold = anomaly.avg_body * cfg.body_mult
+            caption += (
+                f"\nсреднее тело: <b>{anomaly.avg_body:.2f}</b> "
+                f"(по {n_avg} св из {len(candles)})\n"
+                f"алерт при теле ≥ <b>{threshold:.2f}</b> "
+                f"(×{cfg.body_mult:g})\n"
+                f"тело last: <b>{anomaly.body:.2f}</b> "
+                f"(×{anomaly.ratio:.2f} к среднему)"
+            )
+        await message.answer_photo(
+            BufferedInputFile(png, filename="xau_m1.png"),
+            caption=caption,
+        )
+    except Exception:
+        log.exception("chart failed")
+        await message.answer("Не удалось построить график — смотрите logs/")
+    finally:
+        try:
+            await wait.delete()
+        except Exception:
+            pass
+
+
+@router.message(Command("chart"))
+async def cmd_chart(message: Message) -> None:
+    await _send_m1_chart(message)
+
+
+@router.callback_query(F.data == "gold:chart")
+async def cb_chart(cb: CallbackQuery) -> None:
+    await cb.answer()
+    if cb.message:
+        await _send_m1_chart(cb.message)

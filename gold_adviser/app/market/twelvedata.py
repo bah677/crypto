@@ -7,7 +7,7 @@ import logging
 import httpx
 
 from app.config import get_settings
-from app.market.candles import Candle, parse_iso_dt
+from app.market.candles import Candle, assert_m1_spacing, parse_iso_dt
 
 log = logging.getLogger(__name__)
 
@@ -69,5 +69,6 @@ async def fetch_candles(limit: int = 30) -> list[Candle]:
         candles = candles[-limit:]
     if len(candles) < 2:
         raise RuntimeError(f"Twelve Data: мало свечей ({len(candles)})")
+    assert_m1_spacing(candles, provider="TwelveData")
     log.debug("TwelveData candles=%s last=%s", len(candles), candles[-1].open_time_key)
     return candles

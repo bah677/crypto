@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
-from app.market.candles import Candle, parse_iso_dt
+from app.market.candles import Candle, assert_m1_spacing, parse_iso_dt
 
 log = logging.getLogger(__name__)
 
@@ -27,15 +27,30 @@ def _as_list(payload: Any) -> list[dict]:
     return []
 
 
+def _num(obj: dict, *keys: str) -> float | None:
+    for k in keys:
+        if k in obj and obj[k] is not None:
+            try:
+                return float(obj[k])
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
 def _candle_from_obj(obj: dict) -> Candle | None:
     try:
-        o = float(obj.get("OpenPrice", obj.get("open", obj.get("Open"))))
-        h = float(obj.get("HighPrice", obj.get("high", obj.get("High"))))
-        l = float(obj.get("LowPrice", obj.get("low", obj.get("Low"))))
-        c = float(obj.get("ClosePrice", obj.get("close", obj.get("Close"))))
-        vol = float(obj.get("Volume", obj.get("volume", 0)) or 0)
-        ot = obj.get("OpenTime") or obj.get("openTime") or obj.get("datetime") or obj.get("time")
-        if ot is None:
+        o = _num(obj, "openPrice", "OpenPrice", "open", "Open")
+        h = _num(obj, "highPrice", "HighPrice", "high", "High")
+        l = _num(obj, "lowPrice", "LowPrice", "low", "Low")
+        c = _num(obj, "closePrice", "ClosePrice", "close", "Close")
+        vol = _num(obj, "volume", "Volume") or 0.0
+        ot = (
+            obj.get("openTime")
+            or obj.get("OpenTime")
+            or obj.get("datetime")
+            or obj.get("time")
+        )
+        if o is None or h is None or l is None or c is None or ot is None:
             return None
         return Candle(
             open_time=parse_iso_dt(ot),
@@ -82,5 +97,7 @@ async def fetch_candles(limit: int = 30) -> list[Candle]:
         candles = candles[-limit:]
     if len(candles) < 2:
         raise RuntimeError(f"RealMarketAPI: мало свечей ({len(candles)})")
+    # FREE-план RM часто отдаёт 5m-бары даже при timeFrame=M1
+    assert_m1_spacing(candles, provider="RealMarketAPI")
     log.debug("RealMarketAPI candles=%s last=%s", len(candles), candles[-1].open_time_key)
     return candles
